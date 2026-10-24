@@ -1,0 +1,57 @@
+name: Build & Package Patches
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Patches (.rvp)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Patches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew build --no-daemon
+
+      - name: Upload Patches Artifact (.rvp)
+        uses: actions/upload-artifact@v4
+        with:
+          name: revanced-patches
+          path: |
+            patches/build/libs/*.rvp
+            patches/build/libs/*.jar
+          if-no-files-found: warn
+
+      - name: Create GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            patches/build/libs/*.rvp
+            patches/build/libs/*.jar
+          generate_release_notes: true
