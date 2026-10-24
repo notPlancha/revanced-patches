@@ -12,16 +12,30 @@ This repository contains custom patches for Android apps built using the [ReVanc
 
 ---
 
+## 📱 Included Patches
+
+### Instagram (`com.instagram.android`)
+* **Hide Ads** (`app.revanced.patches.instagram.ads.hideAdsPatch`): Hides sponsored posts, ads in feed, and promoted stories/reels.
+* **Hide Suggested Posts** (`app.revanced.patches.instagram.feed.hideSuggestedPostsPatch`): Hides suggested posts, suggested reels, and suggested accounts from the main feed.
+* **Sanitize Sharing Links** (`app.revanced.patches.instagram.misc.sanitizeSharingLinksPatch`): Strips tracking query parameters (such as `?igsh=...`, `?utm_source=...`) when copying or sharing links.
+* **Download Media** (`app.revanced.patches.instagram.download.downloadMediaPatch`): Enables downloading stories, reels, voice notes, and images.
+
+---
+
 ## 🏗️ Project Structure
 
 ```
 ├── patches/
+│   ├── api/                       # Public API signatures (Kotlin binary compatibility)
 │   ├── build.gradle.kts           # Patches metadata and build configuration
 │   └── src/main/kotlin/
 │       └── app/revanced/patches/
-│           ├── example/           # Template / example patch
-│           │   └── ExamplePatch.kt
-│           └── <app_name>/        # Add custom patches organized by app
+│           ├── instagram/         # Instagram patches
+│           │   ├── ads/           # Ad blocking & sponsored post filtering
+│           │   ├── download/      # Media download functionality
+│           │   ├── feed/          # Feed tweaks & suggestions removal
+│           │   └── misc/          # URL sanitization and utilities
+│           └── <new_app>/         # Add future app patches here
 ├── extensions/
 │   └── extension/                 # Optional companion Android code (.rve)
 ├── gradle/
@@ -33,74 +47,54 @@ This repository contains custom patches for Android apps built using the [ReVanc
 
 ---
 
-## 🛠️ Prerequisites & Local Setup
+## 🛠️ Building Locally
 
-### 1. Requirements
-- **JDK 17 or JDK 21** (Temurin recommended)
-- **Git**
-- **GitHub Personal Access Token (PAT)** with `read:packages` scope (required by GitHub Packages to resolve `app.revanced.patches` and `revanced-patcher`).
+```powershell
+# Build all patches and extension bundles (.rvp)
+.\gradlew.bat build
 
-### 2. Configure GitHub Packages Authentication
-Create or edit `~/.gradle/gradle.properties` (e.g. `C:\Users\<User>\.gradle\gradle.properties` on Windows):
-
-```properties
-gpr.user=notPlancha
-gpr.key=YOUR_GITHUB_PAT_WITH_READ_PACKAGES
+# Update the public binary API definition when adding/modifying patches
+.\gradlew.bat :patches:apiDump
 ```
 
-### 3. Build Locally
-Run Gradle to build the `.rvp` patch bundle:
-
-```bash
-# On Windows
-.\gradlew build
-
-# On Linux / macOS
-./gradlew build
-```
-
-Compiled `.rvp` patch files will be generated in `patches/build/libs/`.
+Compiled `.rvp` files are output to `patches/build/libs/patches-<version>.rvp`.
 
 ---
 
-## ✍️ Writing a Patch
+## ➕ Adding a New App in the Future
 
-Create a Kotlin file in `patches/src/main/kotlin/app/revanced/patches/<app>/`:
+To add patches for another app:
+1. Create a directory under `patches/src/main/kotlin/app/revanced/patches/<app_name>/`.
+2. Define a patch:
+   ```kotlin
+   package app.revanced.patches.<app_name>
 
-```kotlin
-package app.revanced.patches.<app>
+   import app.revanced.patcher.patch.bytecodePatch
 
-import app.revanced.patcher.patch.bytecodePatch
+   @Suppress("unused")
+   val myPatch = bytecodePatch(
+       name = "Patch Name",
+       description = "Description of the patch",
+   ) {
+       compatibleWith("com.target.package")
 
-@Suppress("unused")
-val myCustomPatch = bytecodePatch(
-    name = "Patch Name",
-    description = "Description of what this patch accomplishes.",
-) {
-    // Specify compatible package name and versions (or leave versions empty for any)
-    compatibleWith("com.target.package"("1.2.3"))
-
-    execute {
-        // Find classes and methods via Fingerprints or direct lookup
-        // Example:
-        // val targetClass = classes.first { it.type.endsWith("TargetClass;") }
-        // targetClass.methods.first { it.name == "targetMethod" }.apply { ... }
-    }
-}
-```
+       execute {
+           // Fingerprint matching and bytecode edits
+       }
+   }
+   ```
+3. Run `.\gradlew.bat :patches:apiDump` to register the new public symbols.
+4. Run `.\gradlew.bat build` to verify the build.
 
 ---
 
-## 🚀 Testing with ReVanced CLI
-
-To test your compiled patch bundle with an APK:
+## 🚀 Patching an APK with ReVanced CLI
 
 ```bash
-# Run ReVanced CLI with your custom patches bundle
 revanced-cli patch \
-    --patch-bundle patches/build/libs/patches-<version>.rvp \
-    path/to/target.apk \
-    --out path/to/target-patched.apk
+    --patch-bundle patches/build/libs/patches-1.0.4.rvp \
+    path/to/instagram.apk \
+    --out path/to/instagram-patched.apk
 ```
 
 ---
